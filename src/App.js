@@ -7,6 +7,7 @@ var Engine = Matter.Engine,
   Runner = Matter.Runner,
   Bodies = Matter.Bodies,
   Body = Matter.Body,
+  Vector = Matter.Vector,
   Composite = Matter.Composite;
 
 // create an engine
@@ -25,14 +26,14 @@ var render = Render.create({
 });
 
 // create two boxes and a ground
-var boxA = Bodies.rectangle(200, 500, 80, 80, {
+var boxA = Bodies.rectangle(200, 500, 20, 20, {
   inertia: Infinity,
   restitution: 1,
   friction: 0,
   frictionAir: 0,
   frictionStatic: 0,
 });
-var boxB = Bodies.rectangle(600, 400, 80, 80);
+var boxB = Bodies.circle(400, 300, 40);
 var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
 
 // add all of the bodies to the world
@@ -50,10 +51,19 @@ Body.setVelocity(boxA, { x: 1, y: 0 });
 
 animate();
 function animate() {
-  if (Math.abs(boxA.position.x - boxB.position.x) < 500) {
-    console.log(boxB.position - boxA.position);
-    // Body.applyForce(boxA, boxA.position, (boxB.position - boxA.position) / 500)
+  const pointToA = Vector.add(boxB.position, Vector.neg(boxA.position));
+  const power = (
+    Math.pow(500 - Vector.magnitude(pointToA), 2) / 2000000000
+  ).toFixed(5);
+
+  if (Vector.magnitude(pointToA) < 500) {
+    const forceToA = Vector.mult(Vector.normalise(pointToA), power);
+    // console.log(forceToA);
+    Body.applyForce(boxA, boxA.position, forceToA);
   }
+
+  // Body.applyForce(boxA, boxA.position, (boxB.position - boxA.position) / 500)
+  // }
   // Body.applyForce(
   //   boxA,
   //   { x: boxA.position.x, y: boxA.position.y },
@@ -64,7 +74,11 @@ function animate() {
 }
 
 function App() {
-  return <div style={{ position: 'absolute' }}>Matter</div>;
+  return (
+    <div style={{ position: 'absolute' }}>
+      <button onClick={() => {}}>add force</button>
+    </div>
+  );
 }
 
 export default App;
