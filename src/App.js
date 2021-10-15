@@ -1,115 +1,70 @@
-import * as THREE from 'three';
 import './App.css';
+import * as Matter from 'matter-js';
 
-let renderer, scene, camera;
+// module aliases
+var Engine = Matter.Engine,
+  Render = Matter.Render,
+  Runner = Matter.Runner,
+  Bodies = Matter.Bodies,
+  Body = Matter.Body,
+  Composite = Matter.Composite;
 
-let line;
-const MAX_POINTS = 300;
-let drawCount;
+// create an engine
+var engine = Engine.create();
+engine.gravity.y = 0;
+engine.inertia = Infinity;
 
-const helper = (num) => {
-  return Math.max(-1, Math.min(num, 1));
-};
+// create a renderer
+var render = Render.create({
+  element: document.body,
+  engine: engine,
+  options: {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  },
+});
 
-init();
+// create two boxes and a ground
+var boxA = Bodies.rectangle(200, 500, 80, 80, {
+  inertia: Infinity,
+  restitution: 1,
+  friction: 0,
+  frictionAir: 0,
+  frictionStatic: 0,
+});
+var boxB = Bodies.rectangle(600, 400, 80, 80);
+var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
+
+// add all of the bodies to the world
+Composite.add(engine.world, [boxA, boxB, ground]);
+
+// run the renderer
+Render.run(render);
+
+// create runner
+var runner = Runner.create();
+
+// run the engine
+Runner.run(runner, engine);
+Body.setVelocity(boxA, { x: 1, y: 0 });
+
 animate();
-
-function init() {
-  // info
-  const info = document.createElement('div');
-
-  document.body.appendChild(info);
-
-  // renderer
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-
-  // scene
-  scene = new THREE.Scene();
-
-  // camera
-  camera = new THREE.PerspectiveCamera(
-    45,
-    window.innerWidth / window.innerHeight,
-    1,
-    10000
-  );
-  camera.position.set(0, 0, 1000);
-
-  // geometry
-  const geometry = new THREE.BufferGeometry();
-
-  // attributes
-  const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
-  geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-  // drawcalls
-  drawCount = 2; // draw the first 2 points, only
-  geometry.setDrawRange(0, drawCount);
-
-  // material
-  const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-
-  // line
-  line = new THREE.Line(geometry, material);
-  scene.add(line);
-
-  // update positions
-  updatePositions();
-}
-var speedDirectionX = 1;
-var speedDirectionY = 1;
-// update positions
-function updatePositions() {
-  const positions = line.geometry.attributes.position.array;
-
-  let x, y, z, index;
-  x = y = z = index = 0;
-
-  for (let i = 0, l = MAX_POINTS; i < l; i++) {
-    positions[index++] = x;
-    positions[index++] = y;
-    positions[index++] = z;
-
-    speedDirectionX = helper(speedDirectionX + (1 - 2 * Math.random()) * 0.5);
-    speedDirectionY = helper(speedDirectionY + (1 - 2 * Math.random()) * 0.5);
-
-    x += speedDirectionX * 5;
-    y += speedDirectionY * 5;
-    // z += (Math.random() - 0.5) * 50;
-  }
-}
-
-// render
-function render() {
-  renderer.render(scene, camera);
-}
-
-// animate
 function animate() {
-  requestAnimationFrame(animate);
-
-  drawCount = (drawCount + 1) % MAX_POINTS;
-
-  line.geometry.setDrawRange(0, drawCount);
-
-  if (drawCount === 0) {
-    // periodically, generate new data
-
-    updatePositions();
-
-    line.geometry.attributes.position.needsUpdate = true; // required after the first render
-
-    line.material.color.setHSL(Math.random(), 1, 0.5);
+  if (Math.abs(boxA.position.x - boxB.position.x) < 500) {
+    console.log(boxB.position - boxA.position);
+    // Body.applyForce(boxA, boxA.position, (boxB.position - boxA.position) / 500)
   }
+  // Body.applyForce(
+  //   boxA,
+  //   { x: boxA.position.x, y: boxA.position.y },
+  //   { x: 0, y: -0.001 }
+  // );
 
-  render();
+  requestAnimationFrame(animate);
 }
 
 function App() {
-  return <div id='webgl-output'></div>;
+  return <div style={{ position: 'absolute' }}>Matter</div>;
 }
 
 export default App;
