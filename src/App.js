@@ -25,6 +25,11 @@ var render = Render.create({
   },
 });
 
+const canvas = document.getElementsByTagName('canvas')[0];
+console.log(canvas);
+var ctx = canvas.getContext('2d');
+ctx.beginPath();
+
 // create two boxes and a ground
 var boxA = Bodies.rectangle(200, 500, 20, 20, {
   inertia: Infinity,
@@ -34,10 +39,10 @@ var boxA = Bodies.rectangle(200, 500, 20, 20, {
   frictionStatic: 0,
 });
 var boxB = Bodies.circle(400, 300, 40);
-var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
+// var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
 
 // add all of the bodies to the world
-Composite.add(engine.world, [boxA, boxB, ground]);
+Composite.add(engine.world, [boxA, boxB]);
 
 // run the renderer
 Render.run(render);
@@ -56,19 +61,22 @@ function animate() {
     Math.pow(500 - Vector.magnitude(pointToA), 2) / 2000000000
   ).toFixed(5);
 
+  ctx.strokeText(
+    `(${boxA.position.x.toFixed(0)},${boxA.position.y.toFixed(
+      0
+    )})\nspeed:${Vector.magnitude(boxA.velocity).toFixed(1)}`,
+    boxA.position.x + 10,
+    boxA.position.y + 10
+  );
+
   if (Vector.magnitude(pointToA) < 500) {
     const forceToA = Vector.mult(Vector.normalise(pointToA), power);
-    // console.log(forceToA);
     Body.applyForce(boxA, boxA.position, forceToA);
-  }
 
-  // Body.applyForce(boxA, boxA.position, (boxB.position - boxA.position) / 500)
-  // }
-  // Body.applyForce(
-  //   boxA,
-  //   { x: boxA.position.x, y: boxA.position.y },
-  //   { x: 0, y: -0.001 }
-  // );
+    ctx.moveTo(boxA.position.x, boxA.position.y);
+    ctx.lineTo(boxA.position.x + pointToA.x, boxA.position.y + pointToA.y);
+    ctx.stroke();
+  }
 
   requestAnimationFrame(animate);
 }
