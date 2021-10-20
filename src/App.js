@@ -29,20 +29,25 @@ const canvas = document.getElementsByTagName('canvas')[0];
 console.log(canvas);
 var ctx = canvas.getContext('2d');
 ctx.beginPath();
-
-// create two boxes and a ground
-var boxA = Bodies.rectangle(200, 500, 20, 20, {
+const noFriction = {
   inertia: Infinity,
   restitution: 1,
   friction: 0,
   frictionAir: 0,
   frictionStatic: 0,
-});
-var boxB = Bodies.circle(400, 300, 40);
-// var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
+};
+
+// create two boxes and a ground
+var boxes = [];
+var boxA = Bodies.rectangle(200, 500, 20, 20, noFriction);
+var boxB = Bodies.circle(400, 300, 40, noFriction);
+boxB.mass = 10000;
+var boxC = Bodies.rectangle(300, 300, 10, 10, noFriction);
+boxes.push(boxA, boxB, boxC);
+// var boxC = Bodies.rectangle(200, 500, 20, 20, noFriction);
 
 // add all of the bodies to the world
-Composite.add(engine.world, [boxA, boxB]);
+Composite.add(engine.world, boxes);
 
 // run the renderer
 Render.run(render);
@@ -52,31 +57,56 @@ var runner = Runner.create();
 
 // run the engine
 Runner.run(runner, engine);
-Body.setVelocity(boxA, { x: 1, y: 0 });
+// Body.setVelocity(boxA, { x: 1, y: 0 });
 
 animate();
 function animate() {
-  const pointToA = Vector.add(boxB.position, Vector.neg(boxA.position));
-  const power = (
-    Math.pow(500 - Vector.magnitude(pointToA), 2) / 2000000000
-  ).toFixed(5);
+  for (let i = 0; i < boxes.length - 1; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      if (i === j) continue;
+      // calculate distance
+      const box1 = boxes[i];
+      const box2 = boxes[j];
+      const pointTo2 = Vector.add(box2.position, Vector.neg(box1.position));
+      const distance = Vector.magnitude(pointTo2);
 
-  ctx.strokeText(
-    `(${boxA.position.x.toFixed(0)},${boxA.position.y.toFixed(
-      0
-    )})\nspeed:${Vector.magnitude(boxA.velocity).toFixed(1)}`,
-    boxA.position.x + 10,
-    boxA.position.y + 10
-  );
+      // calculate force
+      if (distance < 500) {
+        const force = (Math.pow(500 - distance, 2) / 2000000000).toFixed(5);
+        const forceTo1 = Vector.mult(Vector.normalise(pointTo2), force);
 
-  if (Vector.magnitude(pointToA) < 500) {
-    const forceToA = Vector.mult(Vector.normalise(pointToA), power);
-    Body.applyForce(boxA, boxA.position, forceToA);
+        const forceTo2 = Vector.mult(forceTo1, -1);
 
-    ctx.moveTo(boxA.position.x, boxA.position.y);
-    ctx.lineTo(boxA.position.x + pointToA.x, boxA.position.y + pointToA.y);
-    ctx.stroke();
+        // apply force to both
+        Body.applyForce(box1, box1.position, forceTo1);
+        Body.applyForce(box2, box2.position, forceTo2);
+      }
+    }
   }
+
+  // const pointToA = Vector.add(boxB.position, Vector.neg(boxA.position));
+  // const power = (
+  //   Math.pow(500 - Vector.magnitude(pointToA), 2) / 2000000000
+  // ).toFixed(5);
+
+  // ctx.strokeText(
+  //   `(${boxA.position.x.toFixed(0)},${boxA.position.y.toFixed(
+  //     0
+  //   )})\nspeed:${Vector.magnitude(boxA.velocity).toFixed(1)}`,
+  //   boxA.position.x + 10,
+  //   boxA.position.y + 10
+  // );
+
+  // if (Vector.magnitude(pointToA) < 500) {
+  //   const forceToA = Vector.mult(Vector.normalise(pointToA), power);
+  //   Body.applyForce(boxA, boxA.position, forceToA);
+  //   const forceToB = Vector.mult(forceToA, -0.1);
+  //   Body.applyForce(boxB, boxB.position, forceToB);
+
+  //   // ctx.moveTo(boxA.position.x, boxA.position.y);
+  //   // ctx.lineTo(boxA.position.x + pointToA.x, boxA.position.y + pointToA.y);
+  //   // ctx.stroke();
+  // }
 
   requestAnimationFrame(animate);
 }
