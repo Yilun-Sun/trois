@@ -26,9 +26,9 @@ var render = Render.create({
 });
 
 const canvas = document.getElementsByTagName('canvas')[0];
-console.log(canvas);
 var ctx = canvas.getContext('2d');
 ctx.beginPath();
+
 const noFriction = {
   inertia: Infinity,
   restitution: 1,
@@ -37,14 +37,20 @@ const noFriction = {
   frictionStatic: 0,
 };
 
-// create two boxes and a ground
+// create boxes
 var boxes = [];
-var boxA = Bodies.rectangle(200, 500, 20, 20, noFriction);
-var boxB = Bodies.circle(400, 300, 40, noFriction);
-boxB.mass = 10000;
-var boxC = Bodies.rectangle(300, 300, 10, 10, noFriction);
-boxes.push(boxA, boxB, boxC);
-// var boxC = Bodies.rectangle(200, 500, 20, 20, noFriction);
+
+for (let i = 0; i < 20; i++) {
+  const radius = Math.floor(Math.random() * 30 + 5);
+  var box = Bodies.circle(
+    Math.random() * 500 + 100,
+    Math.random() * 500 + 200,
+    radius,
+    noFriction
+  );
+  box.mass = Math.pow(radius, 2);
+  boxes.push(box);
+}
 
 // add all of the bodies to the world
 Composite.add(engine.world, boxes);
@@ -57,10 +63,19 @@ var runner = Runner.create();
 
 // run the engine
 Runner.run(runner, engine);
-// Body.setVelocity(boxA, { x: 1, y: 0 });
 
+const G = 6.67 * Math.pow(10, -4);
 animate();
 function animate() {
+  const newBoxes = [...boxes];
+  for (let i = 0; i < boxes.length; i++) {
+    ctx.strokeText(
+      boxes[i].mass,
+      boxes[i].position.x - 2,
+      boxes[i].position.y + 1
+    );
+  }
+
   for (let i = 0; i < boxes.length - 1; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
       if (i === j) continue;
@@ -71,8 +86,18 @@ function animate() {
       const distance = Vector.magnitude(pointTo2);
 
       // calculate force
-      if (distance < 500) {
-        const force = (Math.pow(500 - distance, 2) / 2000000000).toFixed(5);
+      if (
+        box1.isDeleted !== true &&
+        box2.isDeleted !== true &&
+        distance < 500 &&
+        distance > box1.circleRadius + box2.circleRadius
+      ) {
+        const force = (
+          (G * (box1.mass * box2.mass)) /
+          // TODO union
+          (Math.pow(distance, 2) + box1.mass * box2.mass)
+        ).toFixed(5);
+        // const force = (Math.pow(500 - distance, 2) / 2000000000).toFixed(5);
         const forceTo1 = Vector.mult(Vector.normalise(pointTo2), force);
 
         const forceTo2 = Vector.mult(forceTo1, -1);
@@ -80,33 +105,31 @@ function animate() {
         // apply force to both
         Body.applyForce(box1, box1.position, forceTo1);
         Body.applyForce(box2, box2.position, forceTo2);
+
+        // ctx.moveTo(box1.position.x, box1.position.y);
+        // ctx.lineTo(box2.position.x, box2.position.y);
+        // ctx.stroke();
+      }
+
+      if (distance <= box1.circleRadius + box2.circleRadius) {
+        newBoxes[i].isDeleted = true;
+        newBoxes[j].isDeleted = true;
+        // newBoxes.push(
+        //   Bodies.circle(
+        //     (box1.position.x + box2.position.x) / 2,
+        //     (box1.position.y + box2.position.y) / 2,
+        //     Math.sqrt(
+        //       box1.circleRadius * box1.circleRadius +
+        //         box2.circleRadius * box2.circleRadius
+        //     )
+        //   )
+        // );
       }
     }
   }
 
-  // const pointToA = Vector.add(boxB.position, Vector.neg(boxA.position));
-  // const power = (
-  //   Math.pow(500 - Vector.magnitude(pointToA), 2) / 2000000000
-  // ).toFixed(5);
-
-  // ctx.strokeText(
-  //   `(${boxA.position.x.toFixed(0)},${boxA.position.y.toFixed(
-  //     0
-  //   )})\nspeed:${Vector.magnitude(boxA.velocity).toFixed(1)}`,
-  //   boxA.position.x + 10,
-  //   boxA.position.y + 10
-  // );
-
-  // if (Vector.magnitude(pointToA) < 500) {
-  //   const forceToA = Vector.mult(Vector.normalise(pointToA), power);
-  //   Body.applyForce(boxA, boxA.position, forceToA);
-  //   const forceToB = Vector.mult(forceToA, -0.1);
-  //   Body.applyForce(boxB, boxB.position, forceToB);
-
-  //   // ctx.moveTo(boxA.position.x, boxA.position.y);
-  //   // ctx.lineTo(boxA.position.x + pointToA.x, boxA.position.y + pointToA.y);
-  //   // ctx.stroke();
-  // }
+  // boxes = newBoxes.filter((x) => x.isDeleted !== true);
+  // console.log(boxes);
 
   requestAnimationFrame(animate);
 }
@@ -114,7 +137,7 @@ function animate() {
 function App() {
   return (
     <div style={{ position: 'absolute' }}>
-      <button onClick={() => {}}>add force</button>
+      {/* <button onClick={() => {}}>add force</button> */}
     </div>
   );
 }
