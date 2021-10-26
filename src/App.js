@@ -37,23 +37,33 @@ const noFriction = {
   frictionStatic: 0,
 };
 
-// create boxes
-var boxes = [];
+const drawLine = (position1, position2, width) => {
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(99, 80, 177, 0.2)';
+  ctx.lineWidth = width;
+  ctx.moveTo(position1.x, position1.y);
+  ctx.lineTo(position2.x, position2.y);
+  ctx.stroke();
+};
 
-for (let i = 0; i < 20; i++) {
+// create bodies
+var bodies = [];
+
+for (let i = 0; i < 10; i++) {
   const radius = Math.floor(Math.random() * 30 + 5);
-  var box = Bodies.circle(
-    Math.random() * 500 + 100,
+  var body = Bodies.circle(
+    Math.random() * 1000 + 100,
     Math.random() * 500 + 200,
     radius,
     noFriction
   );
-  box.mass = Math.pow(radius, 2);
-  boxes.push(box);
+  body.mass = Math.pow(radius, 2);
+  body.render.fillStyle = '#000000';
+  bodies.push(body);
 }
 
 // add all of the bodies to the world
-Composite.add(engine.world, boxes);
+Composite.add(engine.world, bodies);
 
 // run the renderer
 Render.run(render);
@@ -65,79 +75,124 @@ var runner = Runner.create();
 Runner.run(runner, engine);
 
 const G = 6.67 * Math.pow(10, -4);
-animate();
-function animate() {
-  const newBoxes = [...boxes];
-  for (let i = 0; i < boxes.length; i++) {
-    ctx.strokeText(
-      boxes[i].mass,
-      boxes[i].position.x - 2,
-      boxes[i].position.y + 1
-    );
-  }
 
-  for (let i = 0; i < boxes.length - 1; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      if (i === j) continue;
+let animationId = 0;
+
+animate();
+
+function animate() {
+  const bodies = Composite.allBodies(engine.world);
+
+  const newBodies = [];
+
+  for (let i = 0; i < bodies.length - 1; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      if (
+        i === j ||
+        bodies[i].isDeleted === true ||
+        bodies[j].isDeleted === true
+      )
+        continue;
       // calculate distance
-      const box1 = boxes[i];
-      const box2 = boxes[j];
-      const pointTo2 = Vector.add(box2.position, Vector.neg(box1.position));
+      const body1 = bodies[i];
+      const body2 = bodies[j];
+      const pointTo2 = Vector.add(body2.position, Vector.neg(body1.position));
       const distance = Vector.magnitude(pointTo2);
 
       // calculate force
       if (
-        box1.isDeleted !== true &&
-        box2.isDeleted !== true &&
-        distance < 500 &&
-        distance > box1.circleRadius + box2.circleRadius
+        body1.isDeleted !== true &&
+        body2.isDeleted !== true &&
+        // distance < 500 &&
+        distance > body1.circleRadius + body2.circleRadius
       ) {
         const force = (
-          (G * (box1.mass * box2.mass)) /
+          (G * (body1.mass * body2.mass)) /
           // TODO union
-          (Math.pow(distance, 2) + box1.mass * box2.mass)
+          (Math.pow(distance, 2) + body1.mass * body2.mass)
         ).toFixed(5);
-        // const force = (Math.pow(500 - distance, 2) / 2000000000).toFixed(5);
+        if (force < 0.0001) break;
         const forceTo1 = Vector.mult(Vector.normalise(pointTo2), force);
-
         const forceTo2 = Vector.mult(forceTo1, -1);
 
         // apply force to both
-        Body.applyForce(box1, box1.position, forceTo1);
-        Body.applyForce(box2, box2.position, forceTo2);
-
-        // ctx.moveTo(box1.position.x, box1.position.y);
-        // ctx.lineTo(box2.position.x, box2.position.y);
-        // ctx.stroke();
+        Body.applyForce(body1, body1.position, forceTo1);
+        Body.applyForce(body2, body2.position, forceTo2);
+        drawLine(
+          body1.position,
+          body2.position,
+          Math.floor(Vector.magnitude(forceTo1) * 10000)
+        );
       }
 
-      if (distance <= box1.circleRadius + box2.circleRadius) {
-        newBoxes[i].isDeleted = true;
-        newBoxes[j].isDeleted = true;
-        // newBoxes.push(
-        //   Bodies.circle(
-        //     (box1.position.x + box2.position.x) / 2,
-        //     (box1.position.y + box2.position.y) / 2,
-        //     Math.sqrt(
-        //       box1.circleRadius * box1.circleRadius +
-        //         box2.circleRadius * box2.circleRadius
-        //     )
-        //   )
-        // );
+      if (distance <= body1.circleRadius + body2.circleRadius) {
+        // delete bodies
+        body1.isDeleted = true;
+        body2.isDeleted = true;
+        const newBody = Bodies.circle(
+          (body1.position.x + body2.position.x) / 2,
+          (body1.position.y + body2.position.y) / 2,
+          Math.floor(
+            Math.sqrt(
+              body1.circleRadius * body1.circleRadius +
+                body2.circleRadius * body2.circleRadius
+            )
+          ),
+          noFriction
+        );
+
+        Body.setVelocity(
+          newBody,
+          Vector.mult(
+            Vector.add(
+              Vector.mult(body1.velocity, body1.mass),
+              Vector.mult(body2.velocity, body2.mass)
+            ),
+            1 / (body1.mass + body2.mass)
+          )
+        );
+        newBody.mass = body1.mass + body2.mass;
+        newBodies.push(newBody);
       }
     }
   }
 
-  // boxes = newBoxes.filter((x) => x.isDeleted !== true);
-  // console.log(boxes);
+  bodies.forEach((body) => {
+    if (body.isDeleted === true) {
+      Composite.remove(engine.world, body);
+    }
+  });
 
-  requestAnimationFrame(animate);
+  Composite.add(engine.world, newBodies);
+
+  animationId = requestAnimationFrame(animate);
 }
 
 function App() {
   return (
     <div style={{ position: 'absolute' }}>
-      {/* <button onClick={() => {}}>add force</button> */}
+      <button
+        onClick={() => {
+          const circle = Bodies.circle(
+            Math.random() * 500 + 100,
+            Math.random() * 500 + 200,
+            30,
+            noFriction
+          );
+          circle.mass = 50;
+          Composite.add(engine.world, circle);
+        }}
+      >
+        add circle
+      </button>
+      <button
+        onClick={() => {
+          Composite.remove(engine.world, Composite.allBodies(engine.world));
+          cancelAnimationFrame(animationId);
+        }}
+      >
+        cancel animation
+      </button>
     </div>
   );
 }
