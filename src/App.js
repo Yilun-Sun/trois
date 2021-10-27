@@ -46,10 +46,21 @@ const drawLine = (position1, position2, width) => {
   ctx.stroke();
 };
 
+const calculateMassCenter = (body1, body2) => {
+  let x =
+    (body1.position.x * body1.mass + body2.position.x * body2.mass) /
+    (body1.mass + body2.mass);
+  let y =
+    (body1.position.y * body1.mass + body2.position.y * body2.mass) /
+    (body1.mass + body2.mass);
+
+  return { x, y };
+};
+
 // create bodies
 var bodies = [];
 
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 20; i++) {
   const radius = Math.floor(Math.random() * 30 + 5);
   var body = Bodies.circle(
     Math.random() * 1000 + 100,
@@ -59,6 +70,7 @@ for (let i = 0; i < 10; i++) {
   );
   body.mass = Math.pow(radius, 2);
   body.render.fillStyle = '#000000';
+  Body.setVelocity(body, { x: Math.random() - 0.5, y: Math.random() - 0.5 });
   bodies.push(body);
 }
 
@@ -111,7 +123,7 @@ function animate() {
           // TODO union
           (Math.pow(distance, 2) + body1.mass * body2.mass)
         ).toFixed(5);
-        if (force < 0.0001) break;
+
         const forceTo1 = Vector.mult(Vector.normalise(pointTo2), force);
         const forceTo2 = Vector.mult(forceTo1, -1);
 
@@ -129,9 +141,12 @@ function animate() {
         // delete bodies
         body1.isDeleted = true;
         body2.isDeleted = true;
+        const newPosition = calculateMassCenter(body1, body2);
         const newBody = Bodies.circle(
-          (body1.position.x + body2.position.x) / 2,
-          (body1.position.y + body2.position.y) / 2,
+          // (body1.position.x + body2.position.x) / 2,
+          // (body1.position.y + body2.position.y) / 2,
+          newPosition.x,
+          newPosition.y,
           Math.floor(
             Math.sqrt(
               body1.circleRadius * body1.circleRadius +
